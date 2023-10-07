@@ -681,3 +681,8 @@ procdump(void)
     printf("\n");
   }
 }
+
+//print hello message
+void print_hello (int n){
+  printf("Hello from kernal %d\n", n);
+}
