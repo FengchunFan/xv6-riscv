@@ -63,6 +63,7 @@ void            ramdiskrw(struct buf*);
 void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
+int             count_Page(void); //helper function used for page counting
 
 // log.c
 void            initlog(int, struct superblock*);

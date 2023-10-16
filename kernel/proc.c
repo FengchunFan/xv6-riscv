@@ -705,7 +705,7 @@ int print_info (int n){
   }else if(n == 1){
     return total_call;
   }else if(n == 2){
-    return 3;
+    return count_Page();
   }else{
     return -1;
   }
