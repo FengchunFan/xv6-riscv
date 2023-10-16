@@ -697,7 +697,8 @@ int print_info (int n){
 
     //iterate through process table
     for(p = proc; p < &proc[NPROC]; p++){
-      if(p->state == RUNNING || p->state == ZOMBIE)
+      if(p->state == RUNNING || p->state == ZOMBIE || p->state == SLEEPING || p->state == RUNNABLE)
+      //if(p->state == RUNNING || p->state == ZOMBIE)
         number_process++;
     }
     return number_process;
