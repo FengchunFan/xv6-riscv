@@ -105,5 +105,12 @@ sys_sysinfo(void)
 {
   int n;
   argint(0, &n);
-  return print_info(n);;
+  return sysinfo(n);;
+}
+
+uint64
+sys_procinfo(void){
+  uint64 p; //copied from sys_wait
+  argaddr(0, &p);  
+  return 
 }
