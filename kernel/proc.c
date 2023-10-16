@@ -686,3 +686,26 @@ procdump(void)
 void print_hello (int n){
   printf("Hello from kernal %d\n", n);
 }
+
+extern int total_call; //since it is defined in syscall.c, need to use extern
+int print_info (int n){
+  if (n == 0){
+    //the total number of active processes
+    struct proc *p;
+    //char *state;
+    int number_process = 0;
+
+    //iterate through process table
+    for(p = proc; p < &proc[NPROC]; p++){
+      if(p->state == RUNNING || p->state == ZOMBIE)
+        number_process++;
+    }
+    return number_process;
+  }else if(n == 1){
+    return total_call;
+  }else if(n == 2){
+    return 3;
+  }else{
+    return -1;
+  }
+}
