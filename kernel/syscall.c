@@ -144,15 +144,17 @@ syscall(void)
   struct proc *p = myproc();
 
   num = p->trapframe->a7;
-  total_call++; //any syscallx
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     // Use num to lookup the system call function for num, call it,
     // and store its return value in p->trapframe->a0
     p->trapframe->a0 = syscalls[num]();
-    //total_call++; //whenever valid syscall made, increment this variable
   } else {
     printf("%d %s: unknown sys call %d\n",
             p->pid, p->name, num);
     p->trapframe->a0 = -1;
   }
+  
+  //place the incrementater here to exclude the current syscall
+  total_call ++; //any syscallx
+  p -> syscall_count ++; //increment per process count
 }

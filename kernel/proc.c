@@ -126,6 +126,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+  p->syscall_count = 0; //initialize the syscall count
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -724,15 +725,21 @@ int procinfo(uint64 in){
   int ppid = pp -> pid;
 
   //syscall_count
-  int b = 10;
-  int c = 20;
+  int syscall_count = p -> syscall_count;
+  
+  //page_usage, memory size
+  int page_usage = (p -> sz) / PGSIZE; //page size is 4096 bytes, which can be found in kalloc.c
+  if ((p -> sz) % PGSIZE != 0){ //allocate one more page for leftover
+    page_usage ++;
+  }
+
   if((copyout(p->pagetable, in, (char *)&(ppid), sizeof(int)) < 0)) {
     printf("ppid fault");
     return -1;
-  } else if (copyout(p->pagetable, in + sizeof(int), (char *)&(b), sizeof(int)) < 0) {
+  } else if (copyout(p->pagetable, in + sizeof(int), (char *)&(syscall_count), sizeof(int)) < 0) {
     printf("syscount fault");
     return -1;
-  } else if (copyout(p->pagetable, (in + sizeof(int)) + sizeof(int), (char *)&(c), sizeof(int)) < 0) {
+  } else if (copyout(p->pagetable, (in + sizeof(int)) + sizeof(int), (char *)&(page_usage), sizeof(int)) < 0) {
     printf("pageuse fault");
     return -1;
   }
