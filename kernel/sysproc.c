@@ -105,7 +105,7 @@ sys_sysinfo(void)
 {
   int n;
   argint(0, &n);
-  return sysinfo(n);;
+  return sysinfo(n);
 }
 
 uint64
