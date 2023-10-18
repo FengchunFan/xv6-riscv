@@ -713,8 +713,29 @@ int sysinfo (int param){
   }
 }
 
+//reference definition of copyout from:
+//https://course.ccs.neu.edu/cs7600/unix-xv6/vm_8c.html#a532bc3f3e39942c20a471a11cff1a582
 int procinfo(uint64 in){
   //fill the fields
+  struct proc* p = myproc(); //current process
+  
+  //ppid
+  struct proc* pp = p -> parent; //parent process
+  int ppid = pp -> pid;
 
+  //syscall_count
+  int b = 10;
+  int c = 20;
+  if((copyout(p->pagetable, in, (char *)&(ppid), sizeof(int)) < 0)) {
+    printf("ppid fault");
+    return -1;
+  } else if (copyout(p->pagetable, in + sizeof(int), (char *)&(b), sizeof(int)) < 0) {
+    printf("syscount fault");
+    return -1;
+  } else if (copyout(p->pagetable, (in + sizeof(int)) + sizeof(int), (char *)&(c), sizeof(int)) < 0) {
+    printf("pageuse fault");
+    return -1;
+  }
   return 0;
 }
+
