@@ -24,6 +24,7 @@ int sleep(int);
 int uptime(void);
 int hello(int);
 int sysinfo(int);
+int procinfo(void*); //we don't know the exact type in kernel
 
 // ulib.c
 int stat(const char*, struct stat*);

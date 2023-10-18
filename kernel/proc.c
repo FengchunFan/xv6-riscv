@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+struct pinfo;
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -709,4 +711,10 @@ int sysinfo (int param){
   }else{
     return -1;
   }
+}
+
+int procinfo(uint64 in){
+  //fill the fields
+
+  return 0;
 }

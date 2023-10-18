@@ -110,7 +110,7 @@ sys_sysinfo(void)
 
 uint64
 sys_procinfo(void){
-  uint64 p; //copied from sys_wait
-  argaddr(0, &p);  
-  return 
+  uint64 p;
+  argaddr(0, &p);
+  return procinfo(p);
 }
