@@ -126,7 +126,11 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+
   p->syscall_count = 0; //initialize the syscall count
+
+  p->tickets = 0; //tickets value initialize to 0
+  p->ticks = 0; //ticks value initialize to 0
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -172,6 +176,10 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+  //free the newly added fields
+  p->syscall_count = 0;
+  p->tickets = 0;
+  p->ticks = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -444,6 +452,7 @@ wait(uint64 addr)
 //  - swtch to start running that process.
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
+//  Round Robin
 void
 scheduler(void)
 {
@@ -463,8 +472,10 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
+        p->ticks++;
+        
         swtch(&c->context, &p->context);
-
+        
         // Process is done running for now.
         // It should have changed its p->state before coming back.
         c->proc = 0;
@@ -746,12 +757,22 @@ int procinfo(uint64 in){
   return 0;
 }
 
+//1) PID, 2) name in a parenthesis, 3) the ticket value, 4) the number of times it has been scheduled to run
 int sched_statistics(void){
-  printf("sched statistics successful\n"); 
+  struct proc *p;
+  for(p = proc; p < &proc[NPROC]; p++){
+    if(p->state == RUNNING || p->state == ZOMBIE || p->state == SLEEPING || p->state == RUNNABLE){
+      printf("%d(%s): tickets: %d, ticks: %d", p->pid, p->name, p->tickets, p->ticks);
+      printf("\n");
+    }
+  }
   return 0;
 }
 
 int sched_tickets(int tickets_value){
-  printf("sched tickets successful\n"); 
+  struct proc* p = myproc(); //current process
+  if(tickets_value <= 10000){
+    p->tickets = tickets_value;
+  }
   return 0;
 }

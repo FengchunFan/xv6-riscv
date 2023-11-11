@@ -108,4 +108,6 @@ struct proc {
   int syscall_count;           // total number of system calls made by current process
 
   int tickets;                 // tickets value
+
+  int ticks;                   // the number of times the process has been scheduled to run
 };
