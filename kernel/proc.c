@@ -746,3 +746,12 @@ int procinfo(uint64 in){
   return 0;
 }
 
+int sched_statistics(void){
+  printf("sched statistics successful\n"); 
+  return 0;
+}
+
+int sched_tickets(int tickets_value){
+  printf("sched tickets successful\n"); 
+  return 0;
+}
