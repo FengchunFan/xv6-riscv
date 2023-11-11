@@ -129,7 +129,7 @@ found:
 
   p->syscall_count = 0; //initialize the syscall count
 
-  p->tickets = 0; //tickets value initialize to 0
+  p->tickets = 100; //tickets value initialize to 100
   p->ticks = 0; //ticks value initialize to 0
 
   // Allocate a trapframe page.
@@ -445,6 +445,57 @@ wait(uint64 addr)
   }
 }
 
+// pseudo random generator (https://stackoverflow.com/a/7603688)
+unsigned short lfsr = 0xACE1u;
+unsigned short bit;
+unsigned short rand(int mod)
+{
+  bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
+  lfsr = (lfsr >> 1) | (bit << 15);
+  return lfsr % mod + 1;
+}
+
+//lottery scheduler
+//chance of getting selected depend on the tickets number hold by process
+#if defined(LOTTERY)
+void 
+scheduler(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  
+  c->proc = 0;
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+        p->state = RUNNING;
+        c->proc = p;
+        p->ticks++;
+
+        swtch(&c->context, &p->context);
+        
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&p->lock);
+    }
+  }
+}
+
+#elif defined(STRIDE)
+//stride scheduler
+void scheduler(){
+
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -453,6 +504,7 @@ wait(uint64 addr)
 //  - eventually that process transfers control
 //    via swtch back to the scheduler.
 //  Round Robin
+#else
 void
 scheduler(void)
 {
@@ -473,7 +525,7 @@ scheduler(void)
         p->state = RUNNING;
         c->proc = p;
         p->ticks++;
-        
+
         swtch(&c->context, &p->context);
         
         // Process is done running for now.
@@ -484,6 +536,7 @@ scheduler(void)
     }
   }
 }
+#endif
 
 // Switch to scheduler.  Must hold only p->lock
 // and have changed proc->state. Saves and restores
@@ -766,6 +819,11 @@ int sched_statistics(void){
       printf("\n");
     }
   }
+
+  /*for (int i = 0; i < 20; ++i) {
+    printf("%d ", rand(10));
+  }*/
+
   return 0;
 }
 
