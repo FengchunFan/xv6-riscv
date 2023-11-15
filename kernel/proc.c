@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include <stdbool.h>
 
 struct pinfo;
 
@@ -129,7 +130,7 @@ found:
 
   p->syscall_count = 0; //initialize the syscall count
 
-  p->tickets = 100; //tickets value initialize to 100
+  p->tickets = 10000; //tickets value initialize to 10000
   p->ticks = 0; //ticks value initialize to 0
 
   // Allocate a trapframe page.
@@ -448,11 +449,25 @@ wait(uint64 addr)
 // pseudo random generator (https://stackoverflow.com/a/7603688)
 unsigned short lfsr = 0xACE1u;
 unsigned short bit;
-unsigned short rand(int mod)
+unsigned short rand(int num_tickets)
 {
   bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
   lfsr = (lfsr >> 1) | (bit << 15);
-  return lfsr % mod + 1;
+  return lfsr % num_tickets + 1;
+}
+
+//helper function to return current total tickets among proc
+int total_lottery(){
+  int total = 0;
+  struct proc *p;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state == RUNNABLE) {
+      total += p->tickets;
+    }
+    release(&p->lock);
+  }
+  return total;
 }
 
 //lottery scheduler
@@ -465,35 +480,42 @@ scheduler(void)
   struct cpu *c = mycpu();
   
   c->proc = 0;
+
   for(;;){
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
+    int total_tickets = total_lottery();
+    int random_ticket = (int) rand(total_tickets); //select a random ticket number in range 1 to total_tickets
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
-        p->state = RUNNING;
-        c->proc = p;
-        p->ticks++;
+        random_ticket -= p->tickets;
+        if(random_ticket <= 0){
+          //printf("total: %d, pid: %d ",total_tickets, p->pid);
+          p->state = RUNNING;
+          c->proc = p;
+          p->ticks ++;
 
-        swtch(&c->context, &p->context);
-        
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
+          swtch(&c->context, &p->context);
+            
+          // Process is done running for now.
+          // It should have changed its p->state before coming back.
+          c->proc = 0;
+          release(&p->lock);
+          break;
+        }
       }
       release(&p->lock);
     }
   }
 }
-
 #elif defined(STRIDE)
 //stride scheduler
 void scheduler(){
-
 }
 
 // Per-CPU process scheduler.
@@ -524,7 +546,7 @@ scheduler(void)
         // before jumping back to us.
         p->state = RUNNING;
         c->proc = p;
-        p->ticks++;
+        p->ticks ++;
 
         swtch(&c->context, &p->context);
         
@@ -832,5 +854,5 @@ int sched_tickets(int tickets_value){
   if(tickets_value <= 10000){
     p->tickets = tickets_value;
   }
-  return 0;
+  return 0;           
 }
