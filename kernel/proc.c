@@ -5,7 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
-#include <stdbool.h>
+#include <limits.h>
 
 struct pinfo;
 
@@ -132,6 +132,8 @@ found:
 
   p->tickets = 10000; //tickets value initialize to 10000
   p->ticks = 0; //ticks value initialize to 0
+  p->stride = 10000/p->tickets; //use 10000 as big constant, stride = K/tickets
+  p->pass = p->stride; //initially assign pass to stride value
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -181,6 +183,8 @@ freeproc(struct proc *p)
   p->syscall_count = 0;
   p->tickets = 0;
   p->ticks = 0;
+  p->stride = 0;
+  p->pass = 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -516,6 +520,48 @@ scheduler(void)
 #elif defined(STRIDE)
 //stride scheduler
 void scheduler(){
+  struct proc *p;
+  struct cpu *c = mycpu();
+  
+  c->proc = 0;
+
+  for(;;){
+    // Avoid deadlock by ensuring that devices can interrupt.
+    intr_on();
+
+    //find process with minimum pass
+    struct proc *target_proc;
+    int minimum_pass = INT_MAX;
+    for(p = proc; p < &proc[NPROC]; p++) {
+      acquire(&p->lock);
+      if(p->state == RUNNABLE) {
+        // Switch to chosen process.  It is the process's job
+        // to release its lock and then reacquire it
+        // before jumping back to us.
+
+        if(p->pass < minimum_pass){
+          minimum_pass = p->pass;
+          target_proc = p;
+        }
+      }
+      release(&p->lock);
+    }
+
+    //after finding the process
+    if(minimum_pass != INT_MAX){ //ensure update happened
+      acquire(&target_proc->lock);
+      target_proc->state = RUNNING;
+      c->proc = target_proc;
+      target_proc->pass += target_proc->stride;
+      target_proc->ticks ++;
+      swtch(&c->context, &target_proc->context);
+            
+      // Process is done running for now.
+      // It should have changed its p->state before coming back. 
+      c->proc = 0;
+      release(&target_proc->lock);
+    } 
+  }
 }
 
 // Per-CPU process scheduler.
@@ -853,6 +899,8 @@ int sched_tickets(int tickets_value){
   struct proc* p = myproc(); //current process
   if(tickets_value <= 10000){
     p->tickets = tickets_value;
+    p->stride = 10000/tickets_value;
+    p->pass = p->stride;
   }
   return 0;           
 }
