@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "defs.h"
 #include <limits.h>
+#include <stddef.h>
 
 struct pinfo;
 
@@ -903,4 +904,9 @@ int sched_tickets(int tickets_value){
     p->pass = p->stride;
   }
   return 0;           
+}
+
+int clone(uint64 in){
+  printf("valid input for clone\n");
+  return 0;
 }
