@@ -112,7 +112,7 @@ int             sysinfo(int); //sysinfo
 int             procinfo(uint64);
 int             sched_statistics(void);
 int             sched_tickets(int);
-int             clone(uint64);
+int             clone(void*);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

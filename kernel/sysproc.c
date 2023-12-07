@@ -137,5 +137,5 @@ sys_clone(void)
 {
   uint64 p;
   argaddr(0, &p); //check if input stack address is valid
-  return clone(p);
+  return clone((void*)p);
 }
