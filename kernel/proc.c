@@ -106,6 +106,22 @@ allocpid()
   return pid;
 }
 
+int nexttid = 1; //global variable for next thread_id
+struct spinlock tid_lock;
+//allocate a thread id
+int
+allocthreadid()
+{
+  int thread_id;
+  
+  acquire(&tid_lock);
+  thread_id = nexttid;
+  nexttid = nexttid + 1;
+  release(&tid_lock);
+
+  return thread_id;
+}
+
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
@@ -128,7 +144,7 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
-
+  //p->thread_id = allocthreadid();
   p->syscall_count = 0; //initialize the syscall count
 
   p->tickets = 10000; //tickets value initialize to 10000
@@ -172,12 +188,13 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   //when deallocating child thread, we don't want to
   //clear the whole pagetable/trampoline for that child thread
-  if(p->pagetable)
+  if(p->pagetable){
     if(p->thread_id != 0){
-      uvmunmap(pagetable, TRAPFRAME - (PGSIZE * p->thread_id), 1, 0); //same as how to mapped them
+      uvmunmap(p->pagetable, TRAPFRAME - (PGSIZE * p->thread_id), 1, 0); //same as how to mapped them
     }else{
       proc_freepagetable(p->pagetable, p->sz);
     }
+  }
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -462,7 +479,7 @@ wait(uint64 addr)
 // pseudo random generator (https://stackoverflow.com/a/7603688)
 unsigned short lfsr = 0xACE1u;
 unsigned short bit;
-unsigned short rand(int num_tickets)
+unsigned short randi(int num_tickets)
 {
   bit = ((lfsr >> 0) ^ (lfsr >> 2) ^ (lfsr >> 3) ^ (lfsr >> 5)) & 1;
   lfsr = (lfsr >> 1) | (bit << 15);
@@ -499,7 +516,7 @@ scheduler(void)
     intr_on();
 
     int total_tickets = total_lottery();
-    int random_ticket = (int) rand(total_tickets); //select a random ticket number in range 1 to total_tickets
+    int random_ticket = (int) randi(total_tickets); //select a random ticket number in range 1 to total_tickets
     for(p = proc; p < &proc[NPROC]; p++) {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
@@ -914,22 +931,6 @@ int sched_tickets(int tickets_value){
   return 0;           
 }
 
-int nexttid = 1; //global variable for next thread_id
-struct spinlock tid_lock;
-//allocate a thread id
-int
-allocthreadid()
-{
-  int thread_id;
-  
-  acquire(&tid_lock);
-  thread_id = nexttid;
-  nexttid = nexttid + 1;
-  release(&tid_lock);
-
-  return thread_id;
-}
-
 //similar and actually inherit from allocproc
 //basically delete function of creating new page table
 static struct proc*
@@ -949,6 +950,7 @@ allocproc_thread(void)
 
 found:
   //since we are dealing with thread now
+  p->pid = allocpid();
   p->thread_id = allocthreadid();
   p->state = USED;
 
@@ -998,21 +1000,22 @@ int clone(void* stack){
   // TRAPFRAME - PGSIZE * (thread ID) if child thread > 0
   // Doing this separate function out here also avoid duplicate mapping of trapoline
   if(mappages(np->pagetable, TRAPFRAME - PGSIZE * (np -> thread_id), PGSIZE,
-              (uint64)(p->trapframe), PTE_R | PTE_W) < 0){
+              (uint64)(np->trapframe), PTE_R | PTE_W) < 0){
     uvmunmap(np->pagetable, TRAMPOLINE, 1, 0);
     uvmfree(np->pagetable, 0);
     return 0;
   }
   np->sz = p->sz;
 
-  //specify the child’s user stack’s starting address
-  np->trapframe->sp = stack + PGSIZE * sizeof(void);
-
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
 
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
+
+  //specify the child’s user stack’s starting address
+  //assignment to ‘uint64’
+  np->trapframe->sp = (uint64) (stack + PGSIZE * sizeof(void));
 
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
