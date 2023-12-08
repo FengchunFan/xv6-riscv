@@ -27,6 +27,7 @@ int sysinfo(int);
 int procinfo(void*); //we don't know the exact type in kernel
 int sched_statistics(void);
 int sched_tickets(int);
+int clone(void*); //clone system call
 
 // ulib.c
 int stat(const char*, struct stat*);
