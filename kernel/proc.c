@@ -106,22 +106,6 @@ allocpid()
   return pid;
 }
 
-int nexttid = 1; //global variable for next thread_id
-struct spinlock tid_lock;
-//allocate a thread id
-int
-allocthreadid()
-{
-  int thread_id;
-  
-  acquire(&tid_lock);
-  thread_id = nexttid;
-  nexttid = nexttid + 1;
-  release(&tid_lock);
-
-  return thread_id;
-}
-
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
@@ -931,6 +915,22 @@ int sched_tickets(int tickets_value){
   return 0;           
 }
 
+int nexttid = 1; //global variable for next thread_id
+struct spinlock tid_lock;
+//allocate a thread id
+int
+allocthreadid()
+{
+  int thread_id;
+  
+  acquire(&tid_lock);
+  thread_id = nexttid;
+  nexttid = nexttid + 1;
+  release(&tid_lock);
+
+  return thread_id;
+}
+
 //similar and actually inherit from allocproc
 //basically delete function of creating new page table
 static struct proc*
@@ -1015,7 +1015,7 @@ int clone(void* stack){
 
   //specify the child’s user stack’s starting address
   //assignment to ‘uint64’
-  np->trapframe->sp = (uint64) (stack + PGSIZE * sizeof(void));
+  np->trapframe->sp = (uint64) (stack + PGSIZE);
 
   // increment reference counts on open file descriptors.
   for(i = 0; i < NOFILE; i++)
